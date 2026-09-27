@@ -29,16 +29,16 @@ bool handle_keys(std::array<double, 7>& torques, double &applied_torque, const d
     int key = 0;
     while ((key = read_key()) != 0) {
         switch (key) {
-            case 1000: 
+            case UP_ARROW: 
                 applied_torque += 1.0; 
                 applied_torque = std::clamp(applied_torque, -max_torque, max_torque);
                 std::cout << "New Torque: " << applied_torque << std::endl;
-                break; // up arrow
-            case 1001: 
+                break;
+            case DOWN_ARROW: 
                 applied_torque -= 1.0; 
                 applied_torque = std::clamp(applied_torque, -max_torque, max_torque);
                 std::cout << "New Torque: " << applied_torque << std::endl;
-                break; // down arrow
+                break;
 
             case 'q': torques[0] = applied_torque; break;
             case 'a': torques[0] = -applied_torque; break;

@@ -18,6 +18,9 @@ inline void enable_raw_mode() {
     atexit(disable_raw_mode); // restore terminal on exit
 }
 
+#define UP_ARROW 1000
+#define DOWN_ARROW 1001
+
 inline int read_key() {
     char c;
     ssize_t n = read(STDIN_FILENO, &c, 1);
