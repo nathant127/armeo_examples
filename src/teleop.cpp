@@ -1,0 +1,114 @@
+#include "xpcapi.hpp"
+#include "xpcdef.hpp"
+
+#include <string>
+#include <chrono>
+#include <iostream>
+
+#include "keyboard_input.hpp"
+
+using namespace xpcapi;
+
+#define NOW() std::chrono::steady_clock::now()
+#define DURATION(time) std::chrono::duration_cast<std::chrono::milliseconds>(NOW() - time).count()
+
+
+void apply_torques(int port, std::array<double, 7> torques) {
+    SP(port, 467, torques[0]);
+    SP(port, 468, torques[1]);
+    SP(port, 469, torques[2]);
+    SP(port, 470, torques[3]);
+    SP(port, 471, torques[4]);
+    SP(port, 472, torques[5]);
+    SP(port, 473, torques[6]);
+}
+
+bool handle_keys(std::array<double, 7>& torques, double &applied_torque, const double max_torque) {
+    torques.fill(0.0); // Reset torques
+
+    int key = 0;
+    while ((key = read_key()) != 0) {
+        switch (key) {
+            case 1000: 
+                applied_torque += 1.0; 
+                applied_torque = std::clamp(applied_torque, -max_torque, max_torque);
+                std::cout << "New Torque: " << applied_torque << std::endl;
+                break; // up arrow
+            case 1001: 
+                applied_torque -= 1.0; 
+                applied_torque = std::clamp(applied_torque, -max_torque, max_torque);
+                std::cout << "New Torque: " << applied_torque << std::endl;
+                break; // down arrow
+
+            case 'q': torques[0] = applied_torque; break;
+            case 'a': torques[0] = -applied_torque; break;
+            case 'w': torques[1] = applied_torque; break;
+            case 's': torques[1] = -applied_torque; break;
+            case 'e': torques[2] = applied_torque; break;
+            case 'd': torques[2] = -applied_torque; break;
+            case 'r': torques[3] = applied_torque; break;
+            case 'f': torques[3] = -applied_torque; break;
+            case 't': torques[4] = applied_torque; break;
+            case 'g': torques[4] = -applied_torque; break;
+            case 'y': torques[5] = applied_torque; break;
+            case 'h': torques[5] = -applied_torque; break;
+            case 'u': torques[6] = applied_torque; break;
+            case 'j': torques[6] = -applied_torque; break;
+
+            case 'x': return false;
+
+            default: break;
+        }
+    }
+
+    return true;
+}
+
+int main() {
+    int port = startupSeq();
+
+    double MAX_FORCE = GP(port, 152);
+    printf("MAX_FORCE: %f\n", MAX_FORCE);
+    
+    heartBeat(port);
+    auto hb_time = NOW();
+    SP(port, 154, 0.0);
+    SP(port, 141, 10.0);
+
+    auto tq_time = NOW();
+
+    std::cout << "Controls:" << std::endl;
+    std::cout << "Change Torque: up arrow  down arrow"  << std::endl;
+    std::cout << "Apply Torque to Joints" << std::endl;
+    std::cout << "    pos  neg" << std::endl;
+    std::cout << "J1: 'q'  'a'" << std::endl;
+    std::cout << "J2: 'w'  's'" << std::endl;
+    std::cout << "J3: 'e'  'd'" << std::endl;
+    std::cout << "J4: 'r'  'f'" << std::endl;
+    std::cout << "J5: 't'  'g'" << std::endl;
+    std::cout << "J6: 'y'  'h'" << std::endl;
+    std::cout << "J7: 'u'  'j'" << std::endl;
+    std::cout << std::endl;
+    std::cout << "exit program: 'x'" << std::endl;
+
+
+    std::array<double, 7> torques;
+    double applied_torque = 1.0;
+    while (true) {
+        if (DURATION(hb_time) > 500) {
+            heartBeat(port);
+            hb_time = NOW();
+        }
+
+        if (DURATION(tq_time) > 50) {
+            if (handle_keys(torques, applied_torque, MAX_FORCE / 2) == false) {
+                break;
+            }
+            apply_torques(port, torques);
+            tq_time = NOW();
+        }
+    }
+
+    stopSeq(port);
+    return 0;
+}
