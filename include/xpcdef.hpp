@@ -3,6 +3,9 @@
 #include "xpcapi.hpp"
 #include <array>
 #include <thread>
+#include <string.h>
+
+#include <iostream>
 
 constexpr char target_model[] = "AM2_3_1_01HWfullV2_PCIe";
 constexpr char path[] = "../models";
@@ -44,6 +47,7 @@ inline void SP(int port, int idx, double val) {
 inline double GP(int port, int idx) {
     using namespace xpcapi;
     double val;
+    std::cout << "test-1" << std::endl;
     xPCGetParam(port, idx, &val);
     return val;
 }
@@ -53,18 +57,30 @@ inline double GS(int port, int idx) {
     return xPCGetSignal(port, idx);
 }
 
+
+inline void stopSeq(int port) {
+    using namespace xpcapi;
+    if (xPCIsAppRunning(port)) {
+        xPCStopApp(port);
+    }
+    xPCUnloadApp(port);
+}
+
 inline int startupSeq() {
     using namespace xpcapi;
     using namespace std::chrono_literals;
 
-    int port = xPCOpenTcpIpPort("127.0.0.1", "22222");
-    xPCLoadApp(port, path, target_model);
+    int port = xPCOpenTcpIpPort("10.10.10.11", "22222");
 
+    char name[100];
+    xPCGetAppName(port, name);
+    if (strcmp("loader", name) != 0) {
+        stopSeq(port);
+    }
+    
+    xPCLoadApp(port, path, target_model);
     if (!xPCIsAppRunning(port)) {
         xPCStartApp(port);
-        printf("xPC started.\n");
-    } else {
-        fprintf(stderr, "App was already running? Continuing anyway\n");
     }
 
     SP(port, 155, 0.0);
@@ -89,14 +105,11 @@ inline int startupSeq() {
     SP(port, 141, 9.0);
 
 
-    printf("Waitng for sig 4831 to equal 1.0...\n");
     int iter = 1;
     while (GS(port, 4831) != 1.0) {
         std::this_thread::sleep_for(10ms);
         iter++;
     }
-
-    printf("Done with %i iterations\n", iter);
 
     SP(port, 155, 0.0);
     SP(port, 155, 1.0);
@@ -119,13 +132,6 @@ inline int startupSeq() {
     return port;
 }
 
-inline void stopSeq(int port) {
-    using namespace xpcapi;
-    if (xPCIsAppRunning(port)) {
-        xPCStopApp(port);
-    }
-    xPCUnloadApp(port);
-}
 
 inline void heartBeat(int port) {
     static double hb = 0.0;

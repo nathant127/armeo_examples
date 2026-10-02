@@ -4,6 +4,7 @@
 #include <string>
 #include <chrono>
 #include <iostream>
+#include <algorithm>
 
 #include "keyboard_input.hpp"
 
@@ -26,8 +27,9 @@ void apply_torques(int port, std::array<double, 7> torques) {
 bool handle_keys(std::array<double, 7>& torques, double &applied_torque, const double max_torque) {
     torques.fill(0.0); // Reset torques
 
-    int key = 0;
-    while ((key = read_key()) != 0) {
+    int key = -1;
+    while (true) {
+        key = read_key();
         switch (key) {
             case UP_ARROW: 
                 applied_torque += 1.0; 
@@ -57,6 +59,8 @@ bool handle_keys(std::array<double, 7>& torques, double &applied_torque, const d
 
             case 'x': return false;
 
+            case '\0': return true;
+
             default: break;
         }
     }
@@ -65,7 +69,10 @@ bool handle_keys(std::array<double, 7>& torques, double &applied_torque, const d
 }
 
 int main() {
+    enable_raw_mode();
     int port = startupSeq();
+
+    std::cout << "Startup Seq Done\n"; 
 
     double MAX_FORCE = GP(port, 152);
     printf("MAX_FORCE: %f\n", MAX_FORCE);
@@ -109,6 +116,7 @@ int main() {
         }
     }
 
+    disable_raw_mode();
     stopSeq(port);
     return 0;
 }

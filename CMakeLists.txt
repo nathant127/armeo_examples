@@ -21,3 +21,6 @@ target_include_directories(teleop PUBLIC
 )
 
 target_compile_features(teleop PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+
+target_compile_options(teleop PRIVATE -fsanitize=address -g -O0)
+target_link_options(teleop PRIVATE -fsanitize=address)
