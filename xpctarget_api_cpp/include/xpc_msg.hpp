@@ -34,7 +34,7 @@ public:
     template<typename Type>
     void read(std::vector<Type>& vec);
     template<typename Type>
-    void read(Type arr[]);
+    void read(Type* arr);
     void read(std::string& str);
 
     

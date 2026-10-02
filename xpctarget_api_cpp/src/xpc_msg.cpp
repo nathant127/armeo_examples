@@ -1,4 +1,5 @@
 #include "xpc_msg.hpp"
+#include <iostream>
 
 #define DO_BE_CONV 1
 
@@ -41,7 +42,7 @@ void Message::push(const DataType* buf, size_t buf_size) {
 
     // Add the length prefix if data is an array
     if (expected_size == -1) {
-        int len_prefix = buf_byte_size;
+        int len_prefix = buf_size;
 
         payload.resize(payload.size() + sizeof(len_prefix));
         std::byte* p_write = &payload[payload.size() - sizeof(len_prefix)];
@@ -102,7 +103,7 @@ int Message::send(const Connection& con) {
         std::runtime_error("Failed to read response header");
     }
 
-    if (res_header.size == 0) {
+    if (res_header.size <= 0) {
         return 0;
     }
 
@@ -133,11 +134,13 @@ template<typename Type>
 void Message::read(std::vector<Type>& vec) {
     vec.clear();
 
-    int32_t bytesize;
-    memcpy(&bytesize, &res_data[read_idx], sizeof(bytesize));
-    read_idx += sizeof(bytesize);
+    int32_t size;
+    memcpy(&size, &res_data[read_idx], sizeof(size));
+    read_idx += sizeof(size);
 
-    vec.resize(bytesize);
+    int32_t bytesize = size * sizeof(Type);
+
+    vec.resize(size);
     memcpy(vec.data(), &res_data[read_idx], bytesize);
     read_idx += bytesize;
 }
@@ -150,12 +153,15 @@ template void Message::read<uint8_t>(std::vector<uint8_t>& x);
 template void Message::read<char>(std::vector<char>& x);
 template void Message::read<double>(std::vector<double>& x);
 
-template<typename Type>
-void Message::read(Type arr[]) {
 
-    int32_t bytesize;
-    memcpy(&bytesize, &res_data[read_idx], sizeof(bytesize));
-    read_idx += sizeof(bytesize);
+template<typename Type>
+void Message::read(Type* arr) {
+
+    int32_t size;
+    memcpy(&size, &res_data[read_idx], sizeof(size));
+    read_idx += sizeof(size);
+
+    int32_t bytesize = size * sizeof(Type);
 
     memcpy(arr, &res_data[read_idx], bytesize);
     read_idx += bytesize;
@@ -172,12 +178,12 @@ template void Message::read<double>(double* x);
 void Message::read(std::string& str) {
     str.clear();
 
-    int32_t bytesize;
-    memcpy(&bytesize, &res_data[read_idx], sizeof(bytesize));
-    read_idx += sizeof(bytesize);
+    int32_t size;
+    memcpy(&size, &res_data[read_idx], sizeof(size));
+    read_idx += sizeof(size);
 
     str.assign(reinterpret_cast<const char*> (&res_data[read_idx]));
-    read_idx += bytesize;
+    read_idx += size;
 }
 
 void Message::get_tx_payloads(void*& p1, size_t& p1len, void*& p2, size_t& p2len) {

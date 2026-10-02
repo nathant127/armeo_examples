@@ -185,6 +185,9 @@ void xpcapi::xPCSetLogMode(int port, lgmode lgdata) {
 void xpcapi::xPCSetParam(int port, int parIdx, const double *paramValue) {
     int dims_size = xPCGetParamDimsSize(port, parIdx);
 
+    if (dims_size < 0) {
+        std::cerr << "Requested dims size for parameter " << parIdx << " is negative" << std::endl;
+    }
     std::vector<int> dims(dims_size, 0);
     xPCGetParamDims(port, parIdx, dims.data());
 
@@ -195,7 +198,7 @@ void xpcapi::xPCSetParam(int port, int parIdx, const double *paramValue) {
 
     msg_->reset(0x28, 0x1E);
     msg_->push<uint32_t>(reinterpret_cast<uint32_t*>(&parIdx), 1);
-    msg_->push(paramValue, dims_size);
+    msg_->push(paramValue, param_value_size);
     msg_->send(*con_);
 
     return;
@@ -250,7 +253,6 @@ int xpcapi::xPCGetSignals(int port, int numSignals, const int *signals, double *
     msg_->reset(0x28, 0x0A);
     msg_->push<uint32_t>(reinterpret_cast<const uint32_t*>(signals), numSignals);
     msg_->send(*con_);
-
     msg_->read<double>(values);
 
     return 0;
