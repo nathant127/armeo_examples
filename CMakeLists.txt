@@ -20,6 +20,16 @@ target_include_directories(teleop PUBLIC
     $<INSTALL_INTERFACE:include>
 )
 
+add_executable(test_traj
+    src/test_traj.cpp
+)
+target_link_libraries(test_traj xpcapi)
+
+target_include_directories(test_traj PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
+
 target_compile_features(teleop PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 
 # target_compile_options(teleop PRIVATE -fsanitize=address -g -O0)

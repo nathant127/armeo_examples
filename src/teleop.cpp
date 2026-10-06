@@ -79,8 +79,8 @@ int main() {
     
     heartBeat(port);
     auto hb_time = NOW();
-    SP(port, 154, 0.0);
-    SP(port, 141, 10.0);
+    SP(port, SAFETY_ENABLE, 0.0);
+    SP(port, OP_MODE, 10.0);
 
     auto tq_time = NOW();
 

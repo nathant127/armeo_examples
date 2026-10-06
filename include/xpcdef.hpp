@@ -10,6 +10,14 @@
 constexpr char target_model[] = "AM2_3_1_01HWfullV2_PCIe";
 constexpr char path[] = "../models";
 
+#define OP_MODE 141
+#define SAFETY_RESET 155
+#define SAFETY_ENABLE 154
+#define CALIBRATE_ENCODERS 136
+#define AC_WATCHDOG 135
+#define SEND_UDP_PACKETS 138
+#define MANOVO_POWER 424
+
 struct SensorQ {
     int id;
     double vals[20];
@@ -83,26 +91,26 @@ inline int startupSeq() {
         xPCStartApp(port);
     }
 
-    SP(port, 155, 0.0);
-    SP(port, 155, 1.0);
-    SP(port, 155, 0.0);
+    SP(port, SAFETY_RESET, 0.0);
+    SP(port, SAFETY_RESET, 1.0);
+    SP(port, SAFETY_RESET, 0.0);
     // Op mode
-    SP(port, 141, 6.0);
-    SP(port, 154, 1.0);
+    SP(port, OP_MODE, 6.0);
+    SP(port, SAFETY_ENABLE, 1.0);
     // Calib encoders
-    SP(port, 136, 0.0);
-    SP(port, 136, 1.0);
-    SP(port, 136, 0.0);
+    SP(port, CALIBRATE_ENCODERS, 0.0);
+    SP(port, CALIBRATE_ENCODERS, 1.0);
+    SP(port, CALIBRATE_ENCODERS, 0.0);
 
-    SP(port, 155, 0.0);
-    SP(port, 155, 1.0);
-    SP(port, 155, 0.0);
-    SP(port, 155, 0.0);
-    SP(port, 155, 1.0);
-    SP(port, 155, 0.0);
+    // SP(port, SAFETY_RESET, 0.0);
+    // SP(port, SAFETY_RESET, 1.0);
+    // SP(port, SAFETY_RESET, 0.0);
+    SP(port, SAFETY_RESET, 0.0);
+    SP(port, SAFETY_RESET, 1.0);
+    SP(port, SAFETY_RESET, 0.0);
 
     // Op mode
-    SP(port, 141, 9.0);
+    SP(port, OP_MODE, 9.0);
 
 
     int iter = 1;
@@ -111,23 +119,23 @@ inline int startupSeq() {
         iter++;
     }
 
-    SP(port, 155, 0.0);
-    SP(port, 155, 1.0);
-    SP(port, 135, 0.0);
-    SP(port, 155, 0.0);
-    SP(port, 141, 6.0);
+    SP(port, SAFETY_RESET, 0.0);
+    SP(port, SAFETY_RESET, 1.0);
+    SP(port, AC_WATCHDOG, 0.0);
+    SP(port, SAFETY_RESET, 0.0);
+    SP(port, OP_MODE, 6.0);
 
     // Set sensor values
     for (size_t i = 0; i < sensor_qs.size(); i++) {
         xPCSetParam(port, sensor_qs[i].id, sensor_qs[i].vals);
     }
 
-    SP(port, 136, 0.0);
-    SP(port, 136, 1.0);
-    SP(port, 135, 1.0);
-    SP(port, 136, 0.0);
-    SP(port, 138, 1.0);
-    SP(port, 424, 1.0);
+    SP(port, CALIBRATE_ENCODERS, 0.0);
+    SP(port, CALIBRATE_ENCODERS, 1.0);
+    SP(port, AC_WATCHDOG, 1.0);
+    SP(port, CALIBRATE_ENCODERS, 0.0);
+    SP(port, SEND_UDP_PACKETS, 1.0);
+    SP(port, MANOVO_POWER, 1.0);
 
     return port;
 }
