@@ -80,7 +80,7 @@ constexpr int TARGET_ANGLE_INDEX = 0;
 // a segment time computed so no joint moves faster than MAX_SEG_SPEED_RAD_S
 // (and never shorter than MIN_SEG_TIME_S). Override with --second <seconds>.
 // If it turns out to be an absolute timestamp rather than a delta, use --abs-time.
-constexpr double MAX_SEG_SPEED_RAD_S = 0.10;  // ~5.7 deg/s nominal, before ReplaySpeed scaling
+constexpr double MAX_SEG_SPEED_RAD_S = 0.003;  // ~5.7 deg/s nominal, before ReplaySpeed scaling
 constexpr double MIN_SEG_TIME_S      = 1.0;
 
 // ----------------------------------------------------------------------------

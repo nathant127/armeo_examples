@@ -120,11 +120,22 @@ inline int startupSeq() {
     // Op mode
     SP(port, OP_MODE, OMEStopTest);
     if (is_estop_pressed(port)) {
-        printf("Please release the estop before program continues\n");
+        printf("Please release the estop\n");
         while(is_estop_pressed(port)) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
         }
     }
 
+    printf("Please press the estop\n");
+    while(!is_estop_pressed(port)) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    }
+
+    printf("Please release the estop again\n");
+    while(is_estop_pressed(port)) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    }
+    
     SP(port, SAFETY_ENABLE, 1.0);
     // Calib encoders
     SP(port, CALIBRATE_ENCODERS, 0.0);
