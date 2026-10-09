@@ -113,6 +113,9 @@ int main() {
             }
             apply_torques(port, torques);
             tq_time = NOW();
+
+            // double val = GS(port, 696);
+            // printf("Sig 696: %.2f", val);
         }
     }
 

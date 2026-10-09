@@ -18,6 +18,25 @@ constexpr char path[] = "../models";
 #define SEND_UDP_PACKETS 138
 #define MANOVO_POWER 424
 
+#define OMAForce 12.000000
+#define OMARoMActive 13.000000
+#define OMARoMPassive 1.000000
+#define OMDirectTorque 10.000000
+#define OMEStopTest 6.000000
+#define OMFreeSpace 0.000000
+#define OMFreeSpaceNoTelestop 15.000000
+#define OMFriction 8.000000
+#define OMGenericApplication 3.000000
+#define OMHapticPlanes 11.000000
+#define OMMagnetMode 4.000000
+#define OMMobilization 2.000000
+#define OMSafetyHullCalibration 7.000000
+#define OMServiceMode 5.000000
+#define OMUserTrajectory 14.000000
+#define OMWatchdogTest 9.000000
+
+#define STATUS_ESTOP_BIT 2
+
 struct SensorQ {
     int id;
     double vals[20];
@@ -65,6 +84,10 @@ inline double GS(int port, int idx) {
     return xPCGetSignal(port, idx);
 }
 
+inline bool is_estop_pressed(int port) {
+    return ((uint32_t)GS(port, 696)) & (1 << STATUS_ESTOP_BIT);
+}
+
 
 inline void stopSeq(int port) {
     using namespace xpcapi;
@@ -95,22 +118,28 @@ inline int startupSeq() {
     SP(port, SAFETY_RESET, 1.0);
     SP(port, SAFETY_RESET, 0.0);
     // Op mode
-    SP(port, OP_MODE, 6.0);
+    SP(port, OP_MODE, OMEStopTest);
+    if (is_estop_pressed(port)) {
+        printf("Please release the estop before program continues\n");
+        while(is_estop_pressed(port)) {
+        }
+    }
+
     SP(port, SAFETY_ENABLE, 1.0);
     // Calib encoders
     SP(port, CALIBRATE_ENCODERS, 0.0);
     SP(port, CALIBRATE_ENCODERS, 1.0);
     SP(port, CALIBRATE_ENCODERS, 0.0);
 
-    // SP(port, SAFETY_RESET, 0.0);
-    // SP(port, SAFETY_RESET, 1.0);
-    // SP(port, SAFETY_RESET, 0.0);
+    SP(port, SAFETY_RESET, 0.0);
+    SP(port, SAFETY_RESET, 1.0);
+    SP(port, SAFETY_RESET, 0.0);
     SP(port, SAFETY_RESET, 0.0);
     SP(port, SAFETY_RESET, 1.0);
     SP(port, SAFETY_RESET, 0.0);
 
     // Op mode
-    SP(port, OP_MODE, 9.0);
+    SP(port, OP_MODE, OMWatchdogTest);
 
 
     int iter = 1;
@@ -123,7 +152,7 @@ inline int startupSeq() {
     SP(port, SAFETY_RESET, 1.0);
     SP(port, AC_WATCHDOG, 0.0);
     SP(port, SAFETY_RESET, 0.0);
-    SP(port, OP_MODE, 6.0);
+    SP(port, OP_MODE, OMEStopTest);
 
     // Set sensor values
     for (size_t i = 0; i < sensor_qs.size(); i++) {
