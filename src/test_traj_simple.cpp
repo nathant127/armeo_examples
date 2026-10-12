@@ -45,18 +45,18 @@ static int traj_target_id(int j, int k /*1..20*/) {
     return 1659 + 22 * j + offset[k];
 }
 
-void set_joint_target(int port, int n, int j, double angle, double second_value) {
-    double buf[] = {angle, second_value};
+void set_joint_target(int port, int n, int j, double angle, double time) {
+    double buf[] = {angle, time};
     xpcapi::xPCSetParam(port, traj_target_id(j, n), buf);
 }
-void set_target(int port, int n, std::vector<double> angles, std::vector<double> second_value) {
-    set_joint_target(port, n, 0, angles[0], second_value[0]);
-    set_joint_target(port, n, 1, angles[1], second_value[1]);
-    set_joint_target(port, n, 2, angles[2], second_value[2]);
-    set_joint_target(port, n, 3, angles[3], second_value[3]);
-    set_joint_target(port, n, 4, angles[4], second_value[4]);
-    set_joint_target(port, n, 5, angles[5], second_value[5]);
-    set_joint_target(port, n, 6, angles[6], second_value[6]);
+void set_target(int port, int n, std::vector<double> angles, std::vector<double> time) {
+    set_joint_target(port, n, 0, angles[0], time[0]);
+    set_joint_target(port, n, 1, angles[1], time[1]);
+    set_joint_target(port, n, 2, angles[2], time[2]);
+    set_joint_target(port, n, 3, angles[3], time[3]);
+    set_joint_target(port, n, 4, angles[4], time[4]);
+    set_joint_target(port, n, 5, angles[5], time[5]);
+    set_joint_target(port, n, 6, angles[6], time[6]);
 }
 
 int main() {
@@ -74,16 +74,16 @@ int main() {
     // Create targets
     auto joint_angles = get_joint_angles(port);
     joint_angles[0] = -2.65;
-    set_target(port, 1, joint_angles, std::vector<double>(7, 0.1));
+    set_target(port, 1, joint_angles, std::vector<double>(7, 2.0));
     joint_angles[0] = -2.9;
-    set_target(port, 2, joint_angles, std::vector<double>(7, 0.1));
+    set_target(port, 2, joint_angles, std::vector<double>(7, 10.0));
     for (int i = 0; i < 7; i++) {
         SP(port, traj_num_id(i), 2.0);
     }
 
     SP(port, P_REPLAY, 0.0);
     SP(port, P_RECORD, 0.0);
-    SP(port, P_REPLAY_SPEED, 0.05);
+    SP(port, P_REPLAY_SPEED, 1.0);
     
     SP(port, SAFETY_ENABLE, 0.0);
     SP(port, OP_MODE, OMMobilization);
