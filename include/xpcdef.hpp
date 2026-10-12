@@ -4,6 +4,7 @@
 #include <array>
 #include <thread>
 #include <string.h>
+#include <vector>
 
 #include <iostream>
 
@@ -191,4 +192,44 @@ inline void heartBeat(int port) {
     else {
         hb = 0.0;
     }
+}
+
+inline int param_count(int port, int idx) {
+    int nd = xpcapi::xPCGetParamDimsSize(port, idx);
+    if (nd <= 0 || nd > 8) throw std::runtime_error("bad dims size for param " + std::to_string(idx));
+    std::vector<int> dims(nd);
+    xpcapi::xPCGetParamDims(port, idx, dims.data());
+    long n = 1;
+    for (int d : dims) n *= d;
+    if (n < 1 || n > 4096) throw std::runtime_error("bad element count for param " + std::to_string(idx));
+    return (int)n;
+}
+
+
+
+#define JOINT_ANGLE_ID_1 1349
+#define JOINT_ANGLE_ID_2 1350
+#define JOINT_ANGLE_ID_3 1351
+#define JOINT_ANGLE_ID_4 1352
+#define JOINT_ANGLE_ID_5 1353
+#define JOINT_ANGLE_ID_6 1354
+#define JOINT_ANGLE_ID_7 1355
+#define JOINT_VELOCITY_ID_1 1356
+#define JOINT_VELOCITY_ID_2 1357
+#define JOINT_VELOCITY_ID_3 1358
+#define JOINT_VELOCITY_ID_4 1359
+#define JOINT_VELOCITY_ID_5 1360
+#define JOINT_VELOCITY_ID_6 1361
+#define JOINT_VELOCITY_ID_7 1362
+
+inline std::vector<double> get_joint_angles(int port) {
+    std::vector<double> ja(7);
+    ja[0] = GS(port, JOINT_ANGLE_ID_1);
+    ja[1] = GS(port, JOINT_ANGLE_ID_2);
+    ja[2] = GS(port, JOINT_ANGLE_ID_3);
+    ja[3] = GS(port, JOINT_ANGLE_ID_4);
+    ja[4] = GS(port, JOINT_ANGLE_ID_5);
+    ja[5] = GS(port, JOINT_ANGLE_ID_6);
+    ja[6] = GS(port, JOINT_ANGLE_ID_7);
+    return ja;
 }

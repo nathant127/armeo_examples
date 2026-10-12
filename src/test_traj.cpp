@@ -143,18 +143,6 @@ struct Beat {
     }
 };
 
-// Number of doubles in a parameter (product of its dimensions, e.g. [1,2] -> 2).
-static int param_count(int port, int idx) {
-    int nd = xPCGetParamDimsSize(port, idx);
-    if (nd <= 0 || nd > 8) throw std::runtime_error("bad dims size for param " + std::to_string(idx));
-    std::vector<int> dims(nd);
-    xPCGetParamDims(port, idx, dims.data());
-    long n = 1;
-    for (int d : dims) n *= d;
-    if (n < 1 || n > 4096) throw std::runtime_error("bad element count for param " + std::to_string(idx));
-    return (int)n;
-}
-
 // Whole parameter as a flat vector (sized from its dimensions, so no overflow).
 static std::vector<double> getv(int port, int idx) {
     std::vector<double> v(param_count(port, idx), NAN);
