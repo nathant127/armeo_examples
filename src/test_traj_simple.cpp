@@ -14,7 +14,7 @@ using namespace xpcapi;
 constexpr int P_RECORD       = 529;  // Input/OperationMode/Mobilization/Record
 constexpr int P_REPLAY       = 530;  //                                 /Replay
 constexpr int P_REPLAY_SPEED = 531;  //                                 /ReplaySpeed
-constexpr int P_ARM_SIDE     = 410;  // Input/Hardware/Orthosis/ArmSide
+
 #define NOW() std::chrono::steady_clock::now()
 #define DURATION(time) std::chrono::duration_cast<std::chrono::milliseconds>(NOW() - time).count()
 
@@ -74,9 +74,9 @@ int main() {
     // Create targets
     auto joint_angles = get_joint_angles(port);
     joint_angles[0] = -2.65;
-    set_target(port, 1, joint_angles, std::vector<double>(7, 2.0));
+    set_target(port, 1, joint_angles, std::vector<double>(7, 1.5));
     joint_angles[0] = -2.9;
-    set_target(port, 2, joint_angles, std::vector<double>(7, 10.0));
+    set_target(port, 2, joint_angles, std::vector<double>(7, 1.5));
     for (int i = 0; i < 7; i++) {
         SP(port, traj_num_id(i), 2.0);
     }
@@ -88,7 +88,6 @@ int main() {
     SP(port, SAFETY_ENABLE, 0.0);
     SP(port, OP_MODE, OMMobilization);
 
-    SP(port, P_REPLAY, 0.0);
     SP(port, P_REPLAY, 1.0);
 
     
@@ -105,9 +104,10 @@ int main() {
         }
 
         if (DURATION(tq_time) > 50) {
+            tq_time = NOW();
             joint_angles = get_joint_angles(port);
             std::cout << "ja:" << fmt_vec(joint_angles) << std::endl;
-            tq_time = NOW();
+
         }
     }
 

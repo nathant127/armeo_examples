@@ -43,5 +43,15 @@ target_include_directories(test_traj_simple PUBLIC
     $<INSTALL_INTERFACE:include>
 )
 
+add_executable(record_replay
+    src/record_replay.cpp
+)
+target_link_libraries(record_replay xpcapi)
+
+target_include_directories(record_replay PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
+
 # target_compile_options(teleop PRIVATE -fsanitize=address -g -O0)
 # target_link_options(teleop PRIVATE -fsanitize=address)

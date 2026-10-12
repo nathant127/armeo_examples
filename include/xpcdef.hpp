@@ -75,7 +75,6 @@ inline void SP(int port, int idx, double val) {
 inline double GP(int port, int idx) {
     using namespace xpcapi;
     double val;
-    std::cout << "test-1" << std::endl;
     xPCGetParam(port, idx, &val);
     return val;
 }
