@@ -32,17 +32,6 @@ target_include_directories(test_traj PUBLIC
     $<INSTALL_INTERFACE:include>
 )
 
-
-add_executable(test_traj_simple
-    src/test_traj_simple.cpp
-)
-target_link_libraries(test_traj_simple xpcapi)
-
-target_include_directories(test_traj_simple PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>
-)
-
 add_executable(record_replay
     src/record_replay.cpp
 )
