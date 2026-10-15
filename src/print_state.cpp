@@ -1,22 +1,13 @@
 #include "xpcapi.hpp"
 
 #include <string>
-// #include <chrono>
 #include <iostream>
-// #include <algorithm>
-// #include <numeric>
 #include <vector>
 #include <cstring>
 
 
 
 using namespace xpcapi;
-
-static std::string fmt_vec(const std::vector<double>& v) {
-    std::string s = "[";
-    for (size_t i = 0; i < v.size(); i++) s += (i ? ", " : "") + std::to_string(v[i]);
-    return s + "]";
-}
 
 int main() {
     constexpr char addr[] = "10.10.10.11";
