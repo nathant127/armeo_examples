@@ -4,6 +4,7 @@
 #include <iostream>
 #include <vector>
 #include <cstring>
+#include <array>
 
 
 
@@ -97,6 +98,17 @@ int main() {
         for (int i = 0; i < 7; i++) {
             joint_vel_map_arr[i] = xPCGetSignal(port, i + joint_vel_id_0);
         }
+
+        double jacobian_ee[36];
+        static const std::array<int, 36> sig_ids_jacobian = [port]() {
+            int jacobian_base_id = xPCGetSignalIdx(port, "Kinematics/Jacobian EE/s1");
+            std::array<int, 36> arr;
+            for (int i = 0; i < 36; i++) {
+                arr[i] = jacobian_base_id + i;
+            }
+            return arr;
+        }();
+        xPCGetSignals(port, 36, sig_ids_jacobian.data(), jacobian_ee);
 
         std::cout << "End Effector (x,y,z) : " << end_effector.x << " " << end_effector.y << " " << end_effector.z << std::endl;
         std::cout << "Joint Angles         : " << joint_angles.shoulder_joint << " " << 
