@@ -33,6 +33,7 @@ static int traj_num_id(int j) { return 1659 + 22 * j; }
 /// @param k 
 /// @return 
 static int traj_target_id(int j, int k /*1..20*/) {
+    // Targets parameters are in alphabetical instead of numeric order so we need to make a lookup table
     static const std::array<int, 21> offset = [] {
         std::array<int, 21> off{};
         std::vector<int> ks(20);

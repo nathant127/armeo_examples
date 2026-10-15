@@ -90,10 +90,12 @@ int main() {
         // 1362,Output/SoftwareSignals/JointVelocity/s7
 
 
+        // Rather than hardcoding the id we can retrieve it from the name of the parameter
+        int joint_vel_id_0 = xPCGetSignalIdx(port, "Output/SoftwareSignals/JointVelocity/s1");
         // Individual method, but using a for loop to iterate through each;
         double* joint_vel_map_arr = reinterpret_cast<double*>(&joint_velocities);
         for (int i = 0; i < 7; i++) {
-            joint_vel_map_arr[i] = xPCGetSignal(port, i + 1356);
+            joint_vel_map_arr[i] = xPCGetSignal(port, i + joint_vel_id_0);
         }
 
         std::cout << "End Effector (x,y,z) : " << end_effector.x << " " << end_effector.y << " " << end_effector.z << std::endl;
