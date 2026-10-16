@@ -102,7 +102,7 @@ std::array<double, 3> estimate_ee(double* joint_angles) {
     }
     
     Matrix4x4 end_effector_pose = fkine(robot_dh, joint_angles_vec);
-    printMatrix(end_effector_pose);
+    // printMatrix(end_effector_pose);
     
     return {end_effector_pose[0][3], end_effector_pose[1][3], end_effector_pose[2][3]};
 

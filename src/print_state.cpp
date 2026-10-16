@@ -15,6 +15,14 @@
 
 using namespace xpcapi;
 
+static void print_jacobian(std::array<double, 36> j) {
+    std::cout << "Jacobian:" << std::endl;
+    for (int i = 0; i < 6; i++) {
+        std::cout << "[" << j[i*6 + 0] << "," << j[i*6 + 1] << "," << j[i*6 + 2]
+            << "," << j[i*6 + 3] << "," << j[i*6 + 4] << "," << j[i*6 + 5] << "]" << std::endl; 
+    }
+}
+
 int main() {
     enable_raw_mode();
     constexpr char addr[] = "10.10.10.11";
@@ -51,16 +59,16 @@ int main() {
         double z;
     } end_effector;
     struct {
+        double base_joint;
         double shoulder_joint;
-        double j1;
-        double j2;
-        double j3;
-        double j4;
-        double j5;
-        double j6;
+        double shoulder_twise_joint;
+        double elbow_joint;
+        double arm_twist_joint;
+        double wrist_joint;
+        double gripper_joint;
     } joint_angles, joint_velocities;
-    std::ofstream file("JointAngleVsEndEffector.csv");
-    file << "j1,j2,j3,j4,j5,j6,j7,x,y,z,x_est,y_est,z_est,error" << std::endl;
+    // std::ofstream file("JointAngleVsEndEffector.csv");
+    // file << "j1,j2,j3,j4,j5,j6,j7,x,y,z,x_est,y_est,z_est,error" << std::endl;
     
     // 1345,Output/SoftwareSignals/EndEffector/s1
     // 1346,Output/SoftwareSignals/EndEffector/s2
@@ -80,13 +88,13 @@ int main() {
         // 1355,Output/SoftwareSignals/JointAngle/s7
 
         // Get joint angles using indiviudal method
-        joint_angles.shoulder_joint = xPCGetSignal(port, 1349);
-        joint_angles.j1 = xPCGetSignal(port, 1350);
-        joint_angles.j2 = xPCGetSignal(port, 1351);
-        joint_angles.j3 = xPCGetSignal(port, 1352);
-        joint_angles.j4 = xPCGetSignal(port, 1353);
-        joint_angles.j5 = xPCGetSignal(port, 1354);
-        joint_angles.j6 = xPCGetSignal(port, 1355);
+        joint_angles.base_joint = xPCGetSignal(port, 1349);
+        joint_angles.shoulder_joint = xPCGetSignal(port, 1350);
+        joint_angles.shoulder_twise_joint = xPCGetSignal(port, 1351);
+        joint_angles.elbow_joint = xPCGetSignal(port, 1352);
+        joint_angles.arm_twist_joint = xPCGetSignal(port, 1353);
+        joint_angles.wrist_joint = xPCGetSignal(port, 1354);
+        joint_angles.gripper_joint = xPCGetSignal(port, 1355);
     
     
     
@@ -118,33 +126,51 @@ int main() {
         }();
         xPCGetSignals(port, 36, sig_ids_jacobian.data(), jacobian_ee);
 
+        const std::array<double, 36> jacobian_row_major = [jacobian_ee]() {
+            std::array<double, 36> dst;
+           for (int r = 0; r < 6; ++r) {
+                for (int c = 0; c < 6; ++c) {
+                    // Source (column-major): row + col * total_rows
+                    // Destination (row-major): row * total_cols + col
+                    dst[r * 6 + c] = jacobian_ee[r + c * 6];
+                }
+            }
+            return dst;
+        }();
+
+        print_jacobian(jacobian_row_major);
+
+
+
         auto ee_est = estimate_ee(reinterpret_cast<double*>(&joint_angles));
 
         double error = sqrtf64(powf64(ee_est[0] - end_effector.x, 2) + powf64(ee_est[1] - end_effector.y, 2) + powf64(ee_est[2] - end_effector.z, 2));
 
-        file << joint_angles.shoulder_joint << "," << joint_angles.j1 << "," << joint_angles.j2 <<
-            "," << joint_angles.j3 << "," << joint_angles.j4 << "," << joint_angles.j5 << 
-            "," << joint_angles.j6 << "," << end_effector.x << "," << end_effector.y << "," << end_effector.z <<
-            "," << ee_est[0] << "," << ee_est[1] << "," << ee_est[2] <<
-            "," << error << std::endl;
+        // file << joint_angles.shoulder_joint << "," << joint_angles.j1 << "," << joint_angles.j2 <<
+        //     "," << joint_angles.j3 << "," << joint_angles.j4 << "," << joint_angles.j5 << 
+        //     "," << joint_angles.j6 << "," << end_effector.x << "," << end_effector.y << "," << end_effector.z <<
+        //     "," << ee_est[0] << "," << ee_est[1] << "," << ee_est[2] <<
+        //     "," << error << std::endl;
 
         
         
         std::cout << "End Effector (x,y,z)  : " << end_effector.x << " " << end_effector.y << " " << end_effector.z << std::endl;
         std::cout << "End Effector Est (xyz): " << ee_est[0] << " " << ee_est[1] << " " << ee_est[2] << std::endl;
-        std::cout << "Joint Angles          : " << joint_angles.shoulder_joint << " " << 
-            joint_angles.j1 << " " << joint_angles.j2 << " " << joint_angles.j3 << " " << 
-            joint_angles.j4 << " " << joint_angles.j5 << " " << joint_angles.j6 << " " << std::endl;
-        std::cout << "Joint Velocities      : " << joint_velocities.shoulder_joint << " " << 
-            joint_velocities.j1 << " " << joint_velocities.j2 << " " << joint_velocities.j3 << " " << 
-            joint_velocities.j4 << " " << joint_velocities.j5 << " " << joint_velocities.j6 << " " << std::endl;
+        std::cout << "Joint Angles          : " << joint_angles.base_joint << " " << 
+            joint_angles.shoulder_joint << " " << joint_angles.shoulder_twise_joint << " " << joint_angles.elbow_joint << " " << 
+            joint_angles.arm_twist_joint << " " << joint_angles.wrist_joint << " " << joint_angles.gripper_joint << " " << std::endl;
+        std::cout << "Joint Velocities      : " << joint_velocities.base_joint << " " << 
+            joint_velocities.shoulder_joint << " " << joint_velocities.shoulder_twise_joint << " " << joint_velocities.elbow_joint << " " << 
+            joint_velocities.arm_twist_joint << " " << joint_velocities.wrist_joint << " " << joint_velocities.gripper_joint << " " << std::endl;
+
+        
 
         if (read_key() == 'x') {
             break;
         }
     }
 
-    file.close();
+    // file.close();
     
     if (xPCIsAppRunning(port)) {
         xPCStopApp(port);
