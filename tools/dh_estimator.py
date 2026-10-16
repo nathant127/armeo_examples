@@ -1,10 +1,12 @@
+import sys
+import time
+
 import numpy as np
 import pandas as pd
-import roboticstoolbox as rtb
 from scipy.optimize import least_squares
 
 # ---------- Configuration ----------
-CSV_PATH = "armeo_joints_ee.csv"
+CSV_PATH = "JointAngleVsEndEffector.csv"
 Q_COLS = [f"q{i}" for i in range(1, 8)]   # joint angle columns, joint 1 = shoulder
 P_COLS = ["x", "y", "z"]                  # target point (e.g. EE, EL, WR)
 CHAIN = list(range(7))                    # 0-based indices of joints on the serial path
@@ -14,11 +16,88 @@ MAX_LENGTH = 1.0      # bound on |a| and |d|, in the units of x,y,z (use 1000 if
 N_STARTS = 20         # random restarts (problem is nonconvex)
 MAX_SAMPLES = 1000    # subsample for speed; set to None to use all rows
 SEED = 0
+CHUNK_ROWS = 100_000  # rows per chunk while reading the CSV (only affects the progress display)
 
 rng = np.random.default_rng(SEED)
 
+
+# ---------- Progress reporting ----------
+def fmt_time(seconds):
+    s = int(seconds)
+    return f"{s // 3600:02d}:{(s % 3600) // 60:02d}:{s % 60:02d}"
+
+
+class Progress:
+    """Live status line: which start, how many evaluations, how many samples consumed so far.
+
+    One 'evaluation' is a full pass over all samples. The optimizer also makes extra
+    passes to estimate the Jacobian by finite differences (about n_params + 1 passes
+    per iteration), so these counters climb much faster than the number of iterations.
+    """
+
+    def __init__(self, n_starts, n_samples):
+        self.n_starts = n_starts
+        self.n_samples = n_samples
+        self.t0 = time.time()
+        self.tty = sys.stdout.isatty()
+        self.interval = 0.25 if self.tty else 5.0   # seconds between redraws
+        self.last_draw = 0.0
+        self.maxlen = 0
+        self.start_idx = 0
+        self.evals = 0            # full passes over the data
+        self.samples = 0          # total samples consumed across all passes
+        self.cur_rms = float("nan")
+        self.best_rms = float("nan")
+
+    def end_eval(self, res):
+        self.evals += 1
+        self.samples += self.n_samples
+        self.cur_rms = float(np.sqrt(np.mean(res ** 2)))
+        self.draw()
+
+    def draw(self, force=False):
+        now = time.time()
+        if not force and now - self.last_draw < self.interval:
+            return
+        self.last_draw = now
+        line = (f"start {self.start_idx}/{self.n_starts} | eval {self.evals:,} | "
+                f"{self.samples:,} samples consumed | RMS now {self.cur_rms:.4g}, "
+                f"best {self.best_rms:.4g} | {fmt_time(now - self.t0)}")
+        self.maxlen = max(self.maxlen, len(line))
+        if self.tty:
+            sys.stdout.write("\r" + line.ljust(self.maxlen))
+        else:
+            sys.stdout.write(line + "\n")
+        sys.stdout.flush()
+
+    def message(self, text):
+        """Print a permanent line without garbling the status line."""
+        if self.tty:
+            sys.stdout.write("\r" + " " * self.maxlen + "\r")
+        print(text)
+        sys.stdout.flush()
+
+    def finish(self):
+        if self.tty:
+            sys.stdout.write("\r" + " " * self.maxlen + "\r")
+        print(f"Done: {self.evals:,} evaluations, {self.samples:,} samples consumed, "
+              f"{fmt_time(time.time() - self.t0)} elapsed")
+
+
 # ---------- Load data ----------
-df = pd.read_csv(CSV_PATH)
+with open(CSV_PATH, "rb") as f:
+    total_rows = max(sum(1 for _ in f) - 1, 0)   # minus header
+print(f"Reading {CSV_PATH}: {total_rows:,} rows")
+
+chunks, rows_read = [], 0
+for chunk in pd.read_csv(CSV_PATH, chunksize=CHUNK_ROWS):
+    chunks.append(chunk[Q_COLS + P_COLS])
+    rows_read += len(chunk)
+    print(f"\r  read {rows_read:,} / {total_rows:,} rows "
+          f"({100.0 * rows_read / max(total_rows, 1):.0f}%)", end="", flush=True)
+print()
+df = pd.concat(chunks, ignore_index=True)
+
 Q = df[Q_COLS].to_numpy(float)
 P = df[P_COLS].to_numpy(float)
 
@@ -30,29 +109,77 @@ elif np.max(np.abs(Q)) > 2 * np.pi + 0.1:
 if MAX_SAMPLES and len(Q) > MAX_SAMPLES:
     idx = rng.choice(len(Q), MAX_SAMPLES, replace=False)
     Q, P = Q[idx], P[idx]
+    print(f"Subsampled {len(Q):,} of {total_rows:,} rows (MAX_SAMPLES = {MAX_SAMPLES})")
 
 Qc = Q[:, CHAIN]
 n = len(CHAIN)
 print(f"Fitting {n} joints to {len(Qc)} samples of {P_COLS}")
 
+progress = Progress(N_STARTS, len(Qc))
+
+
 # ---------- Model ----------
-def make_robot(params):
-    """params is flat, ordered [a, d, alpha, offset] per joint."""
+def fk_points(params, Qs):
+    """Standard-DH forward kinematics for ALL samples at once. Returns (N, 3) positions.
+
+    params is flat, ordered [a, d, alpha, offset] per joint. Per link:
+        A = Rz(q + offset) * Tz(d) * Tx(a) * Rx(alpha)   (same as RevoluteDH)
+    The end position is the sum over links of (rotation of the previous links) * (link
+    translation), so only a 3x3 rotation and a 3-vector are carried along.
+    """
     p = params.reshape(n, 4)
-    links = [rtb.RevoluteDH(a=a, d=d, alpha=al, offset=off) for a, d, al, off in p]
-    return rtb.DHRobot(links, name="fit")
+    N = Qs.shape[0]
+    R = np.broadcast_to(np.eye(3), (N, 3, 3)).copy()
+    t = np.zeros((N, 3))
+    for j in range(n):
+        a, d, al, off = p[j]
+        th = Qs[:, j] + off
+        ct, st = np.cos(th), np.sin(th)
+        ca, sa = np.cos(al), np.sin(al)
+        step = np.stack([a * ct, a * st, np.full(N, d)], axis=1)     # link translation, parent frame
+        t = t + np.einsum("nij,nj->ni", R, step)
+        Rj = np.zeros((N, 3, 3))
+        Rj[:, 0, 0], Rj[:, 0, 1], Rj[:, 0, 2] = ct, -st * ca, st * sa
+        Rj[:, 1, 0], Rj[:, 1, 1], Rj[:, 1, 2] = st, ct * ca, -ct * sa
+        Rj[:, 2, 1], Rj[:, 2, 2] = sa, ca
+        R = R @ Rj
+    return t
+
 
 def residuals(params):
-    robot = make_robot(params)
-    res = np.empty((len(Qc), 3))
-    for k, q in enumerate(Qc):
-        res[k] = robot.fkine(q).t - P[k]
+    res = fk_points(params, Qc) - P
+    progress.end_eval(res)
     return res.ravel()
+
+
+def check_against_rtb():
+    """Cross-check the vectorised FK against roboticstoolbox (if installed) on a few samples."""
+    try:
+        import roboticstoolbox as rtb
+    except ImportError:
+        print("roboticstoolbox not installed: skipping FK cross-check")
+        return
+    rc = np.random.default_rng(123)
+    test = np.column_stack([rc.uniform(-0.3, 0.3, n), rc.uniform(-0.3, 0.3, n),
+                            rc.choice([0, np.pi / 2, -np.pi / 2, np.pi], n),
+                            rc.uniform(-np.pi, np.pi, n)])
+    robot = rtb.DHRobot([rtb.RevoluteDH(a=a, d=d, alpha=al, offset=off) for a, d, al, off in test])
+    idx = rc.choice(len(Qc), min(5, len(Qc)), replace=False)
+    ref = np.array([robot.fkine(Qc[i]).t for i in idx])
+    err = np.abs(ref - fk_points(test.ravel(), Qc[idx])).max()
+    if err > 1e-9:
+        raise RuntimeError(f"Vectorised FK disagrees with roboticstoolbox (max diff {err:.3g}).")
+    print(f"FK cross-check against roboticstoolbox passed (max diff {err:.1e})")
+
+
+check_against_rtb()
+
 
 # ---------- Bounds and initial guesses ----------
 # Angles get +/-2*pi so starting values never sit on a bound.
 lower = np.tile([-MAX_LENGTH, -MAX_LENGTH, -2 * np.pi, -2 * np.pi], n)
 upper = -lower
+
 
 def random_start():
     a = rng.uniform(-0.3, 0.3, n) * MAX_LENGTH
@@ -61,18 +188,28 @@ def random_start():
     offset = rng.uniform(-np.pi, np.pi, n)
     return np.column_stack([a, d, alpha, offset]).ravel()
 
+
 # ---------- Multi-start fit ----------
 best, costs = None, []
 for s in range(N_STARTS):
+    progress.start_idx = s + 1
+    t_start = time.time()
     x0 = random_start()
     try:
         r = least_squares(residuals, x0, bounds=(lower, upper), method="trf", max_nfev=200)
     except Exception as e:
-        print(f"  start {s}: failed ({e})")
+        progress.message(f"  start {s + 1}/{N_STARTS}: failed ({e})")
         continue
     costs.append(r.cost)
-    if best is None or r.cost < best.cost:
+    rms_s = float(np.sqrt(np.mean(r.fun ** 2)))
+    new_best = best is None or r.cost < best.cost
+    if new_best:
         best = r
+        progress.best_rms = rms_s
+    progress.message(f"  start {s + 1}/{N_STARTS} done: RMS {rms_s:.4g}, nfev {r.nfev}, "
+                     f"{fmt_time(time.time() - t_start)}" + ("  <- new best" if new_best else ""))
+
+progress.finish()
 
 if best is None:
     raise RuntimeError("All starts failed. Check the CSV and CHAIN settings.")

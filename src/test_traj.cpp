@@ -74,9 +74,9 @@ int main() {
 
     // Create targets
     auto joint_angles = get_joint_angles(port);
-    joint_angles[0] = -2.65;
+    joint_angles[4] = -1.3;
     set_target(port, 1, joint_angles, std::vector<double>(7, 1.5));
-    joint_angles[0] = -2.9;
+    joint_angles[4] = -1.9;
     set_target(port, 2, joint_angles, std::vector<double>(7, 1.5));
     for (int i = 0; i < 7; i++) {
         SP(port, traj_num_id(i), 2.0);
