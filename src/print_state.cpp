@@ -67,8 +67,6 @@ int main() {
         double wrist_joint;
         double gripper_joint;
     } joint_angles, joint_velocities;
-    // std::ofstream file("JointAngleVsEndEffector.csv");
-    // file << "j1,j2,j3,j4,j5,j6,j7,x,y,z,x_est,y_est,z_est,error" << std::endl;
     
     // 1345,Output/SoftwareSignals/EndEffector/s1
     // 1346,Output/SoftwareSignals/EndEffector/s2
@@ -140,22 +138,9 @@ int main() {
 
         print_jacobian(jacobian_row_major);
 
-
-
-        auto ee_est = estimate_ee(reinterpret_cast<double*>(&joint_angles));
-
-        double error = sqrtf64(powf64(ee_est[0] - end_effector.x, 2) + powf64(ee_est[1] - end_effector.y, 2) + powf64(ee_est[2] - end_effector.z, 2));
-
-        // file << joint_angles.shoulder_joint << "," << joint_angles.j1 << "," << joint_angles.j2 <<
-        //     "," << joint_angles.j3 << "," << joint_angles.j4 << "," << joint_angles.j5 << 
-        //     "," << joint_angles.j6 << "," << end_effector.x << "," << end_effector.y << "," << end_effector.z <<
-        //     "," << ee_est[0] << "," << ee_est[1] << "," << ee_est[2] <<
-        //     "," << error << std::endl;
-
         
         
         std::cout << "End Effector (x,y,z)  : " << end_effector.x << " " << end_effector.y << " " << end_effector.z << std::endl;
-        std::cout << "End Effector Est (xyz): " << ee_est[0] << " " << ee_est[1] << " " << ee_est[2] << std::endl;
         std::cout << "Joint Angles          : " << joint_angles.base_joint << " " << 
             joint_angles.shoulder_joint << " " << joint_angles.shoulder_twise_joint << " " << joint_angles.elbow_joint << " " << 
             joint_angles.arm_twist_joint << " " << joint_angles.wrist_joint << " " << joint_angles.gripper_joint << " " << std::endl;
@@ -169,8 +154,6 @@ int main() {
             break;
         }
     }
-
-    // file.close();
     
     if (xPCIsAppRunning(port)) {
         xPCStopApp(port);

@@ -204,6 +204,13 @@ inline int param_count(int port, int idx) {
     return (int)n;
 }
 
+inline std::vector<int> param_dim(int port, int idx) {
+    int nd = xpcapi::xPCGetParamDimsSize(port, idx);
+    std::vector<int> dims(nd);
+    xpcapi::xPCGetParamDims(port, idx, dims.data());
+    return dims;
+}
+
 
 
 #define JOINT_ANGLE_ID_1 1349

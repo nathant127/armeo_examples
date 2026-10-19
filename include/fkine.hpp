@@ -107,3 +107,28 @@ std::array<double, 3> estimate_ee(double* joint_angles) {
     return {end_effector_pose[0][3], end_effector_pose[1][3], end_effector_pose[2][3]};
 
 }
+
+std::array<double, 3> estimate_ee_updated_params(double* joint_angles) {
+    // Example: Defining a simple 3-Axis Revolute Robot (3R Planar Arm)
+    // parameters: {theta, d, a, alpha, isPrismatic}
+
+    std::vector<DHParam> robot_dh = {
+        {-0.0000,  0.0000,  1.5708, -0.0000, false},
+        { 0.0000,  0.0000, -1.5708,  3.1416, false},
+        {-0.0000,  0.2490,  1.5708, -0.0000, false},
+        {-0.0000, -0.0000, -1.5708, -0.0000, false},
+        { 0.0000,  0.2520,  1.5708,  0.0000, false},
+        { 0.0840, -0.0000,  0.0000,  1.5708, false}
+    };
+
+    std::vector<double> joint_angles_vec(6);
+    for (int i = 0; i < 6; i++) {
+        joint_angles_vec[i] = joint_angles[i];
+    }
+    
+    Matrix4x4 end_effector_pose = fkine(robot_dh, joint_angles_vec);
+    // printMatrix(end_effector_pose);
+    
+    return {end_effector_pose[0][3], end_effector_pose[1][3], end_effector_pose[2][3]};
+
+}
