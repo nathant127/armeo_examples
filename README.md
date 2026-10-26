@@ -23,8 +23,19 @@ make
 ```
 
 ## Usage
+Plug in the Armeo Power Target PC to your device over ethernet, the Armeo Power Target PC address is 10.10.10.11:22222.
 
-Simply run any of the executables in the build directory.
+So that your device knows how to route traffic to the Armeo Power's Subnet, ensure that the connection you use is set to a static IP with subnet 10.10.10.XX, preferably 10.10.10.10 as that is the address that the offical Armeo Power PC uses to conenct. How this is done depends on the operating system, but you can do this with nmcli like so:
+
+```bash
+sudo nmcli connection modify "ETHERNET CONNECTION NAME" \
+  ipv4.method manual \
+  ipv4.addresses "10.10.10.10/24" \
+  ipv4.gateway "" \
+  ipv4.never-default yes
+```
+
+Once connected simply run any of the executables in the build directory and it should work.
 
 
 ## Examples
