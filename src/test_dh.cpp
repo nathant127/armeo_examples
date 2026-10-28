@@ -39,28 +39,7 @@ int main() {
     constexpr char net_port[] = "22222";
 
     // Open a connection to the Armeo Power
-    int port = xPCOpenTcpIpPort(addr, net_port);
-
-    
-    char name[100];
-    // Check if an app is loaded
-    // If no app is loaded, the app is called "loader"
-    xPCGetAppName(port, name);
-    if (std::strcmp("loader", name) != 0) {
-        // Stop app if it is running
-        if (xPCIsAppRunning(port)) {
-            xPCStopApp(port);
-        }
-        xPCUnloadApp(port);
-    }
-    
-    constexpr char target_model[] = "AM2_3_1_01HWfullV2_PCIe";
-    constexpr char path[] = "../models";
-
-    // Load the model for the Armeo Power
-    xPCLoadApp(port, path, target_model);
-    // Start the app
-    xPCStartApp(port);
+    int port = startupSeq();
 
     std::ofstream file("Comparison.csv");
     file << "q1,q2,q3,q4,q5,q6,q7,x,y,z,x_est,y_est,z_est,error" << std::endl;
