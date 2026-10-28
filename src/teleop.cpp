@@ -10,9 +10,7 @@
 
 using namespace xpcapi;
 
-#define NOW() std::chrono::steady_clock::now()
-#define DURATION(time) std::chrono::duration_cast<std::chrono::milliseconds>(NOW() - time).count()
-
+using namespace std::chrono_literals;
 
 void apply_torques(int port, std::array<double, 7> torques) {
     SP(port, 467, torques[0]);
@@ -71,18 +69,9 @@ bool handle_keys(std::array<double, 7>& torques, double &applied_torque, const d
 int main() {
     enable_raw_mode();
     int port = startupSeq();
-
-    std::cout << "Startup Seq Done\n"; 
-
-    double MAX_FORCE = GP(port, 152);
-    printf("MAX_FORCE: %f\n", MAX_FORCE);
     
-    heartBeat(port);
-    auto hb_time = NOW();
     SP(port, SAFETY_ENABLE, 0.0);
     SP(port, OP_MODE, 10.0);
-
-    auto tq_time = NOW();
 
     std::cout << "Controls:" << std::endl;
     std::cout << "Change Torque: up arrow  down arrow"  << std::endl;
@@ -101,22 +90,9 @@ int main() {
 
     std::array<double, 7> torques;
     double applied_torque = 1.0;
-    while (true) {
-        if (DURATION(hb_time) > 500) {
-            heartBeat(port);
-            hb_time = NOW();
-        }
-
-        if (DURATION(tq_time) > 50) {
-            if (handle_keys(torques, applied_torque, MAX_FORCE / 2) == false) {
-                break;
-            }
-            apply_torques(port, torques);
-            tq_time = NOW();
-
-            // double val = GS(port, 696);
-            // printf("Sig 696: %.2f", val);
-        }
+    while (handle_keys(torques, applied_torque, 25.0)) {
+        apply_torques(port, torques);
+        std::this_thread::sleep_for(50ms);
     }
 
     disable_raw_mode();
