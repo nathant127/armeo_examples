@@ -47,9 +47,6 @@ int main() {
     int port = startupSeq();
 
     std::cout << "Startup Seq Done\n"; 
-    
-    heartBeat(port);
-    auto hb_time = NOW();
 
     // Create targets
     auto joint_angles = get_joint_angles(port);
@@ -70,11 +67,6 @@ int main() {
     auto tq_time = NOW();
 
     while (true) {
-        if (DURATION(hb_time) > 500) {
-            heartBeat(port);
-            hb_time = NOW();
-        }
-
         if (DURATION(tq_time) > 50) {
             tq_time = NOW();
             joint_angles = get_joint_angles(port);
