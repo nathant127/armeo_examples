@@ -15,40 +15,24 @@ constexpr int P_RECORD       = 529;  // Input/OperationMode/Mobilization/Record
 constexpr int P_REPLAY       = 530;  //                                 /Replay
 constexpr int P_REPLAY_SPEED = 531;  //                                 /ReplaySpeed
 
-#define NOW() std::chrono::steady_clock::now()
-#define DURATION(time) std::chrono::duration_cast<std::chrono::milliseconds>(NOW() - time).count()
-
-static std::string fmt_vec(const std::vector<double>& v) {
-    std::string s = "[";
-    for (size_t i = 0; i < v.size(); i++) s += (i ? ", " : "") + std::to_string(v[i]);
-    return s + "]";
+static int get_num_targets_id(int joint_num) {
+    constexpr std::array<int, 7> base_lookup = {
+        1659, 1681, 1703, 1725, 1747, 1769, 1791
+    };
+    return base_lookup[joint_num];
 }
 
-/// @brief Gets the param "number of trajectories" for the given joint's mobilization mode
-/// @param j 
-/// @return 
-static int traj_num_id(int j) { return 1659 + 22 * j; }
-/// @brief Gets the given target for some joint and target number (mobilization mode)
-/// @param j 
-/// @param k 
-/// @return 
-static int traj_target_id(int j, int k /*1..20*/) {
-    // Targets parameters are in alphabetical instead of numeric order so we need to make a lookup table
-    static const std::array<int, 21> offset = [] {
-        std::array<int, 21> off{};
-        std::vector<int> ks(20);
-        std::iota(ks.begin(), ks.end(), 1);
-        std::sort(ks.begin(), ks.end(),
-                  [](int a, int b) { return std::to_string(a) < std::to_string(b); });
-        for (size_t r = 0; r < ks.size(); r++) off[ks[r]] = 1 + (int)r;  // 0 = NumOfTargets
-        return off;
-    }();
-    return 1659 + 22 * j + offset[k];
+static int get_target_id(int target_num, int joint_num) {
+    constexpr std::array<int, 20> offset_lookup = {
+        1,12,14,15,16,17,18,19,20,2,3,4,5,6,7,8,9,10,11,13
+    };
+    return get_num_targets_id(joint_num) + offset_lookup[target_num];
 }
+
 
 void set_joint_target(int port, int n, int j, double angle, double time) {
     double buf[] = {angle, time};
-    xpcapi::xPCSetParam(port, traj_target_id(j, n), buf);
+    xpcapi::xPCSetParam(port, get_target_id(j, n), buf);
 }
 void set_target(int port, int n, std::vector<double> angles, std::vector<double> time) {
     set_joint_target(port, n, 0, angles[0], time[0]);
@@ -64,22 +48,14 @@ int main() {
     enable_raw_mode();
     int port = startupSeq();
 
-    std::cout << "Startup Seq Done\n"; 
-
-    double MAX_FORCE = GP(port, 152);
-    printf("MAX_FORCE: %f\n", MAX_FORCE);
-    
-    heartBeat(port);
-    auto hb_time = NOW();
-
     // Create targets
     auto joint_angles = get_joint_angles(port);
-    joint_angles[4] = -1.3;
+    joint_angles[0] = 0.0;
+    set_target(port, 0, joint_angles, std::vector<double>(7, 1.5));
+    joint_angles[0] = -0.5;
     set_target(port, 1, joint_angles, std::vector<double>(7, 1.5));
-    joint_angles[4] = -1.9;
-    set_target(port, 2, joint_angles, std::vector<double>(7, 1.5));
     for (int i = 0; i < 7; i++) {
-        SP(port, traj_num_id(i), 2.0);
+        SP(port, get_num_targets_id(i), 2.0);
     }
 
     SP(port, P_REPLAY, 0.0);
@@ -91,24 +67,10 @@ int main() {
 
     SP(port, P_REPLAY, 1.0);
 
-    
-    auto tq_time = NOW();
-
-
-
-    std::array<double, 7> torques;
-    double applied_torque = 1.0;
     while (true) {
-        if (DURATION(hb_time) > 500) {
-            heartBeat(port);
-            hb_time = NOW();
-        }
-
-        if (DURATION(tq_time) > 50) {
-            tq_time = NOW();
-            joint_angles = get_joint_angles(port);
-            std::cout << "ja:" << fmt_vec(joint_angles) << std::endl;
-
+        char key = static_cast<char>(read_key());
+        if (key == 'x') {
+            break;
         }
     }
 
