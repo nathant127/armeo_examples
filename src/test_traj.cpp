@@ -10,6 +10,7 @@
 #include "keyboard_input.hpp"
 
 using namespace xpcapi;
+using namespace std::chrono_literals;
 
 constexpr int P_RECORD       = 529;  // Input/OperationMode/Mobilization/Record
 constexpr int P_REPLAY       = 530;  //                                 /Replay
@@ -32,7 +33,7 @@ static int get_target_id(int target_num, int joint_num) {
 
 void set_joint_target(int port, int n, int j, double angle, double time) {
     double buf[] = {angle, time};
-    xpcapi::xPCSetParam(port, get_target_id(j, n), buf);
+    xpcapi::xPCSetParam(port, get_target_id(n, j), buf);
 }
 void set_target(int port, int n, std::vector<double> angles, std::vector<double> time) {
     set_joint_target(port, n, 0, angles[0], time[0]);
@@ -48,15 +49,21 @@ int main() {
     enable_raw_mode();
     int port = startupSeq();
 
-    // Create targets
-    auto joint_angles = get_joint_angles(port);
-    joint_angles[0] = 0.0;
-    set_target(port, 0, joint_angles, std::vector<double>(7, 1.5));
-    joint_angles[0] = -0.5;
-    set_target(port, 1, joint_angles, std::vector<double>(7, 1.5));
+    auto ja = get_joint_angles(port);
     for (int i = 0; i < 7; i++) {
-        SP(port, get_num_targets_id(i), 2.0);
+        set_joint_target(port, 0, i, ja[i], 1.0);
+        SP(port, get_num_targets_id(i), 1.0);
     }
+
+
+    // Create targets
+    int joint = 0;
+    double targets[2] = {0.0, -0.5};
+    double durations[2] = {2.0, 2.0};
+    set_joint_target(port, 0, joint, targets[0], durations[0]);
+    set_joint_target(port, 1, joint, targets[1], durations[1]);
+    SP(port, get_num_targets_id(joint), 2.0);
+
 
     SP(port, P_REPLAY, 0.0);
     SP(port, P_RECORD, 0.0);
