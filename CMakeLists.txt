@@ -52,12 +52,12 @@ target_include_directories(print_state PUBLIC
     $<INSTALL_INTERFACE:include>
 )
 
-add_executable(vel_control
-    src/vel_control.cpp
+add_executable(service_mode
+    src/service_mode.cpp
 )
-target_link_libraries(vel_control xpcapi)
+target_link_libraries(service_mode xpcapi)
 
-target_include_directories(vel_control PUBLIC
+target_include_directories(service_mode PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
 )
